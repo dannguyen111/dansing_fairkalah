@@ -47,7 +47,7 @@ public class dansing2MancalaPlayer implements MancalaPlayer {
 
 	public double obvious_factor(MancalaNode node) {
 		double factor = 1.0;
-		dansing1MancalaNode searchNode = new dansing1MancalaNode(node);
+		dansing2MancalaNode searchNode = new dansing2MancalaNode(node);
 
 		if (node.player == GameNode.MAX) {
 			if (searchNode.freeMoves() > 0) {

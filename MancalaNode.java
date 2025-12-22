@@ -122,7 +122,9 @@ scoring pit.  Thus a simple measure of utility would be (s - s).
 		MancalaNode newNode = (MancalaNode) super.clone();
 		newNode.state = (int[]) state.clone();
 		return newNode;
-	}        
+	}
+	
+	public int[] getState() { return state; }
 
 	/**
 	 * <code>gameOver</code> - return true if no pieces left in

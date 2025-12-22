@@ -27,7 +27,7 @@ public class Mancala {
 
 		// TODO (*2*) put player two class here
 		//		player[GameNode.MIN] = new HumanMancalaPlayer(); 
-		player[GameNode.MIN] = new dansingMancalaPlayer2(); 
+		player[GameNode.MIN] = new dansing2MancalaPlayer(); 
 
 		// Create times
 		final long MILLISECONDS_PER_GAME = 300000L; // 5 minutes
