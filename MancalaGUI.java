@@ -2,6 +2,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import javax.swing.*;
+import javax.swing.text.DefaultCaret;
 
 public class MancalaGUI extends JFrame {
     // Game Objects
@@ -13,6 +14,7 @@ public class MancalaGUI extends JFrame {
     // UI Components
     private JButton[] pits = new JButton[14];
     private JLabel statusLabel;
+    private JTextArea gameLog; // New Log Area
     private JButton startButton;
     private JTextField boardInput;
     private JComboBox<String> sideSelector;
@@ -27,10 +29,10 @@ public class MancalaGUI extends JFrame {
         super("Dansing FairKalah GUI");
         stopwatch = new Stopwatch();
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(900, 500);
+        setSize(900, 600);
         setLayout(new BorderLayout(10, 10));
 
-        // Initialize Bot (The one you uploaded)
+        // Initialize Bot
         computerPlayer = new dansing2MancalaPlayer();
 
         // --- 1. Top Control Panel ---
@@ -45,7 +47,7 @@ public class MancalaGUI extends JFrame {
         sideSelector = new JComboBox<>(sides);
         controlPanel.add(sideSelector);
 
-        controlPanel.add(new JLabel("Difficulty (Total think time):"));
+        controlPanel.add(new JLabel("Difficulty:"));
         String[] thinkTime = {"Easy (5s)", "Medium (30s)", "Hard (300s)"};
         diffSelector = new JComboBox<>(thinkTime);
         controlPanel.add(diffSelector);
@@ -58,7 +60,7 @@ public class MancalaGUI extends JFrame {
 
         // --- 2. Board Panel ---
         JPanel boardPanel = new JPanel(new BorderLayout(10, 10));
-        boardPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        boardPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
         // Left Store (Player 2 / MIN) - Index 13
         pits[13] = createStoreButton(13, "P2 Store");
@@ -69,17 +71,15 @@ public class MancalaGUI extends JFrame {
         boardPanel.add(pits[6], BorderLayout.EAST);
 
         // Center Grid (Play Pits)
-        JPanel centerGrid = new JPanel(new GridLayout(2, 6, 10, 10)); // 2 Rows, 6 Cols
+        JPanel centerGrid = new JPanel(new GridLayout(2, 6, 10, 10));
         
         // Top Row: Player 2 Pits (Indices 12 down to 7)
-        // Visually P2 moves Right-to-Left, so index 12 is Top-Left, 7 is Top-Right.
         for (int i = 12; i >= 7; i--) {
             pits[i] = createPitButton(i);
             centerGrid.add(pits[i]);
         }
 
         // Bottom Row: Player 1 Pits (Indices 0 up to 5)
-        // Visually P1 moves Left-to-Right.
         for (int i = 0; i < 6; i++) {
             pits[i] = createPitButton(i);
             centerGrid.add(pits[i]);
@@ -88,61 +88,97 @@ public class MancalaGUI extends JFrame {
         boardPanel.add(centerGrid, BorderLayout.CENTER);
         add(boardPanel, BorderLayout.CENTER);
 
-        // --- 3. Status Panel ---
+        // --- 3. Bottom Panel (Status + Log) ---
+        JPanel bottomPanel = new JPanel(new BorderLayout(5, 5));
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
+
+        // Status Label at the top of bottom panel
         statusLabel = new JLabel("Welcome! Select settings and click Start Game.");
         statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
         statusLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
-        statusLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        add(statusLabel, BorderLayout.SOUTH);
+        bottomPanel.add(statusLabel, BorderLayout.NORTH);
+
+        // Scrollable Game Log
+        gameLog = new JTextArea(6, 40);
+        gameLog.setEditable(false);
+        gameLog.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        gameLog.setLineWrap(true);
+        gameLog.setWrapStyleWord(true);
+        
+        JScrollPane logScroll = new JScrollPane(gameLog);
+        logScroll.setBorder(BorderFactory.createTitledBorder("Game Log"));
+        // Auto-scroll logic
+        DefaultCaret caret = (DefaultCaret)gameLog.getCaret();
+        caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
+        
+        bottomPanel.add(logScroll, BorderLayout.CENTER);
+
+        add(bottomPanel, BorderLayout.SOUTH);
 
         // Disable board initially
         setBoardEnabled(false);
         setVisible(true);
     }
 
+    // Helper to append to log
+    private void log(String message) {
+        gameLog.append(message + "\n");
+    }
+
     private JButton createPitButton(int index) {
         JButton btn = new JButton("4");
         btn.setFont(new Font("SansSerif", Font.BOLD, 24));
         btn.setFocusPainted(false);
-        btn.setBackground(new Color(230, 230, 250)); // Light purple
+        btn.setBackground(new Color(230, 230, 250));
         btn.addActionListener(e -> handleHumanMove(index));
         return btn;
     }
 
     private JButton createStoreButton(int index, String title) {
-        JButton btn = new JButton("<html><center>" + title + "<br><h1 style='font-size:30px'>0</h1></center></html>");
+        // Updated with color contrast fix
+        String colorStyle = (index == 6) ? "color:blue" : "color:red";
+        JButton btn = new JButton("<html><center>" + title + "<br><h1 style='font-size:30px;" + colorStyle + "'>0</h1></center></html>");
+        
         btn.setPreferredSize(new Dimension(100, 200));
-        btn.setEnabled(false); // Stores are never clickable
+        btn.setEnabled(true); // Keep enabled so colors show brightly
         btn.setBackground(new Color(200, 200, 200));
         btn.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 2));
+        // Remove rollover so it doesn't look clickable
+        btn.setRolloverEnabled(false);
         return btn;
     }
 
     private void startGame() {
         try {
             int boardId = Integer.parseInt(boardInput.getText().trim());
-            // Initialize the game state using your dansing2MancalaNode
             gameState = new dansing2MancalaNode(boardId);
             
-            // Determine who is who
+            // Setup sides
             int selection = sideSelector.getSelectedIndex();
             humanPlayerSide = (selection == 0) ? GameNode.MAX : GameNode.MIN;
 
+            // Setup time
             int selection2 = diffSelector.getSelectedIndex();
             botTimeRemaining = (selection2 == 0) ? 5000 : (selection2 == 1) ? 30000 : 300000;
             
             gameInProgress = true;
+            gameLog.setText(""); // Clear log
+            log("=== NEW GAME STARTED ===");
+            log("Board ID: " + boardId);
+            log("You are Player " + (humanPlayerSide + 1));
+            
             updateBoardUI();
 
-            // Determine whose turn it is
-            // Note: dansing2MancalaNode defaults to Player 0 (MAX) going first
+            // Determine turn
             if (gameState.getPlayer() == humanPlayerSide) {
                 isHumanTurn = true;
                 statusLabel.setText("Your Turn! (You are Player " + (humanPlayerSide + 1) + ")");
+                log("It is your turn.");
                 setBoardEnabled(true);
             } else {
                 isHumanTurn = false;
                 statusLabel.setText("Bot is thinking...");
+                log("Bot (Player " + (humanPlayerSide == 0 ? 2 : 1) + ") is thinking...");
                 setBoardEnabled(false);
                 executeBotMove();
             }
@@ -158,12 +194,15 @@ public class MancalaGUI extends JFrame {
     private void handleHumanMove(int pitIndex) {
         if (!gameInProgress || !isHumanTurn) return;
 
-        // Check if move is valid
         ArrayList<Integer> legalMoves = gameState.getLegalMoves();
         if (!legalMoves.contains(pitIndex)) {
-            statusLabel.setText("Invalid Move! You must pick a non-empty pit on your side.");
+            statusLabel.setText("Invalid Move!");
+            log("Invalid move attempted: Pit " + MancalaNode.moveToString(pitIndex));
             return;
         }
+
+        // Log the move
+        log("You played pit " + MancalaNode.moveToString(pitIndex));
 
         // Perform Move
         gameState.makeMove(pitIndex);
@@ -172,7 +211,6 @@ public class MancalaGUI extends JFrame {
     }
 
     private void executeBotMove() {
-        // Use SwingWorker to prevent UI freezing while bot thinks
         new SwingWorker<Integer, Void>() {
             @Override
             protected Integer doInBackground() throws Exception {
@@ -189,7 +227,10 @@ public class MancalaGUI extends JFrame {
                 try {
                     if (!gameInProgress) return;
                     
-                    int move = get(); // Get the move chosen by the bot
+                    int move = get(); 
+                    // Log the bot's move
+                    log("Bot played pit " + MancalaNode.moveToString(move));
+                    
                     gameState.makeMove(move);
                     updateBoardUI();
                     checkGameState();
@@ -197,6 +238,7 @@ public class MancalaGUI extends JFrame {
                 } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
                     statusLabel.setText("Bot Error!");
+                    log("Error: Bot failed to return a move.");
                 }
             }
         }.execute();
@@ -211,9 +253,13 @@ public class MancalaGUI extends JFrame {
             if (util > 0) winner = "Player 1 Wins!";
             else if (util < 0) winner = "Player 2 Wins!";
             else winner = "It's a Draw!";
-            
+
+            String gameResult = pits[6] + " - " + pits[13];
             statusLabel.setText("GAME OVER: " + winner);
-            JOptionPane.showMessageDialog(this, winner + "\nFinal Score: " + util);
+            log("=== GAME OVER ===");
+            log("Result: " + winner);
+            log("Final Score: " + gameResult);
+            JOptionPane.showMessageDialog(this, winner + "\nFinal Score: " + gameResult);
             return;
         }
 
@@ -221,43 +267,39 @@ public class MancalaGUI extends JFrame {
         if (gameState.getPlayer() == humanPlayerSide) {
             isHumanTurn = true;
             statusLabel.setText("Your Turn!");
+            // Only log "Your turn" if the previous move wasn't also ours (extra turn)
+            // But simple is fine:
+            log("Your turn.");
             setBoardEnabled(true);
         } else {
             isHumanTurn = false;
             statusLabel.setText("Bot is thinking...");
+            log("Bot is thinking...");
             setBoardEnabled(false);
             executeBotMove();
         }
     }
 
-    /**
-     * Updates the text/numbers on all buttons based on the gameState.
-     * CRITICAL: accessing 'state' directly works because we are in the same package (default).
-     */
     private void updateBoardUI() {
-        // We access the protected 'state' array from MancalaNode directly.
-        // This requires MancalaGUI.java to be in the same directory/package as MancalaNode.java.
         int[] state = gameState.state; 
 
-        // Update Pits 0-5 and 7-12
         for (int i = 0; i < 14; i++) {
-            // Update Stores differently
             if (i == 6) {
-                pits[i].setText("<html><center>P1 Store<br><h1 style='font-size:30px; color: blue'>" + state[i] + "</h1></center></html>");
+                // P1 Store (Blue)
+                pits[i].setText("<html><center>P1 Store<br><h1 style='font-size:30px; color:blue'>" + state[i] + "</h1></center></html>");
             } else if (i == 13) {
-                pits[i].setText("<html><center>P2 Store<br><h1 style='font-size:30px; color: red'>" + state[i] + "</h1></center></html>");
+                // P2 Store (Red)
+                pits[i].setText("<html><center>P2 Store<br><h1 style='font-size:30px; color:red'>" + state[i] + "</h1></center></html>");
             } else {
                 pits[i].setText(String.valueOf(state[i]));
             }
             
-            // Visual Highlight for non-empty pits
             if (i != 6 && i != 13) {
                 if (state[i] == 0) pits[i].setForeground(Color.GRAY);
                 else pits[i].setForeground(Color.BLACK);
             }
         }
         
-        // Highlight active side
         if (gameState.getPlayer() == 0) { // Player 1
             pits[6].setBorder(BorderFactory.createLineBorder(Color.GREEN, 4));
             pits[13].setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 2));
@@ -268,21 +310,17 @@ public class MancalaGUI extends JFrame {
     }
 
     private void setBoardEnabled(boolean enabled) {
-        // Only enable the buttons for the Human's side
         int start = (humanPlayerSide == 0) ? 0 : 7;
         int end = (humanPlayerSide == 0) ? 5 : 12;
 
         for (int i = 0; i < 14; i++) {
-            // Never enable stores
             if (i == 6 || i == 13) continue;
 
-            // Always disable opponent's pits
             if (i < start || i > end) {
                 pits[i].setEnabled(false);
                 continue;
             }
 
-            // Enable own pits only if it is human turn AND they have stones
             if (enabled && gameState.state[i] > 0) {
                 pits[i].setEnabled(true);
             } else {
@@ -292,7 +330,6 @@ public class MancalaGUI extends JFrame {
     }
 
     public static void main(String[] args) {
-        // Ensure UI Thread safety
         SwingUtilities.invokeLater(() -> new MancalaGUI());
     }
 }
