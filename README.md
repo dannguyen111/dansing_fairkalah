@@ -11,6 +11,8 @@ An advanced AI Mancala player featuring a custom heuristic evaluation function d
 
 ## Installation & How to Play
 
+Do you want to try to beat our bot? Here are ways you can try & play against our player.
+
 ### Option 1: Graphical Interface (Recommended)
 1.  Ensure you have [Java Installed](https://www.java.com/en/download/).
 2.  Go to the **[Releases](../../releases)** page of this repository.
