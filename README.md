@@ -20,6 +20,10 @@ An advanced AI Mancala player featuring a custom heuristic evaluation function d
     * **Board Index:** Enter a number between `0` and `253` to select a specific FairKalah board (or `-1` for random).
     * **Side:** Choose to go First (Player 1) or Second (Player 2).
 
+
+https://github.com/user-attachments/assets/b0af8c9d-2fc4-408e-89a7-75e30f4474a3
+
+
 ### Option 2: Build from Source
 1.  Clone this repository.
 2.  Compile the Java files:
